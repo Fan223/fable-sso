@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Consent required</title>
+</head>
+<body class="items-center">
+<h1 style="margin-bottom: 0.5rem;">应用程序权限</h1>
+<div>应用程序 <span th:text="${clientId}"></span> 想要访问您的帐户 <span th:text="${principalName}"></span></div>
+<div th:if="${userCode}" class="mt"> 您已提供代码 <span th:text="${userCode}"></span> 验证此代码是否与设备上显示的内容匹配
+</div>
+<div class="mt">上述应用程序请求以下权限，如果您批准，请查看这些并同意</div>
+<div class="mt">
+    <form name="consent_form" method="post" th:action="${requestURI}">
+        <input type="hidden" name="client_id" th:value="${clientId}">
+        <input type="hidden" name="state" th:value="${state}">
+        <input th:if="${userCode}" type="hidden" name="user_code" th:value="${userCode}">
+
+        <div th:each="scope: ${scopes}">
+            <input type="checkbox" name="scope" th:value="${scope.scope}" th:id="${scope.scope}"/>
+            <label th:for="${scope.scope}" th:text="${scope.scope}"></label>
+            <span th:text="${scope.description}"></span>
+        </div>
+
+        <p th:if="${not #lists.isEmpty(approvedScopes)}">您已将以下权限授予上述应用程序</p>
+        <div th:each="scope: ${approvedScopes}">
+            <input type="checkbox" th:id="${scope.scope}" disabled checked>
+            <label th:for="${scope.scope}" th:text="${scope.scope}"></label>
+            <p th:text="${scope.description}"></p>
+        </div>
+
+        <div class="justify-center mt">
+            <button style="margin-right: 0.5rem" type="submit" id="submit-consent">提交授权</button>
+            <button type="button" id="cancel-consent" onclick="cancelConsent();">取消</button>
+        </div>
+    </form>
+</div>
+<div class="mt">您必须同意提供访问权限，如果您不批准，请单击 “取消”，在这种情况下，不会与应用程序共享任何信息</div>
+</body>
+
+<script>
+    function cancelConsent() {
+        document.consent_form.reset();
+        document.consent_form.submit();
+    }
+</script>
+<style>
+    .items-center {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .mt {
+        margin-top: 0.5rem;
+    }
+
+    .justify-center {
+        display: flex;
+        justify-content: center;
+    }
+</style>
+</html>

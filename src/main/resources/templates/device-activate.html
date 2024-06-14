@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Activate required</title>
+</head>
+<body class="justify-center">
+<form th:action="@{/oauth2/device_verification}" method="post">
+    <div>
+        <label for="user_code">激活码</label>
+        <input type="text" id="user_code" name="user_code" required autofocus>
+    </div>
+    <div class="justify-center" style="margin-top: 0.5rem">
+        <button type="submit">提交</button>
+    </div>
+</form>
+</body>
+
+<style>
+    .justify-center {
+        display: flex;
+        justify-content: center;
+    }
+</style>
+</html>
