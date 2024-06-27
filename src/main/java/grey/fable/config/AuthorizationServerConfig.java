@@ -12,12 +12,15 @@ import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
 import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
 import org.springframework.security.oauth2.core.OAuth2AccessToken;
 import org.springframework.security.oauth2.core.oidc.OidcScopes;
 import org.springframework.security.oauth2.core.oidc.OidcUserInfo;
+import org.springframework.security.oauth2.jwt.JwtClaimsSet;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.server.authorization.JdbcOAuth2AuthorizationConsentService;
 import org.springframework.security.oauth2.server.authorization.JdbcOAuth2AuthorizationService;
@@ -29,6 +32,8 @@ import org.springframework.security.oauth2.server.authorization.config.annotatio
 import org.springframework.security.oauth2.server.authorization.settings.AuthorizationServerSettings;
 import org.springframework.security.oauth2.server.authorization.settings.ClientSettings;
 import org.springframework.security.oauth2.server.authorization.settings.TokenSettings;
+import org.springframework.security.oauth2.server.authorization.token.JwtEncodingContext;
+import org.springframework.security.oauth2.server.authorization.token.OAuth2TokenCustomizer;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
 import org.springframework.security.web.util.matcher.MediaTypeRequestMatcher;
@@ -38,8 +43,8 @@ import java.security.KeyPairGenerator;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
 import java.time.Duration;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * 授权服务器配置类
@@ -273,6 +278,39 @@ public class AuthorizationServerConfig {
      */
     @Bean
     public AuthorizationServerSettings authorizationServerSettings() {
-        return AuthorizationServerSettings.builder().build();
+        return AuthorizationServerSettings.builder()
+                // 设置 Token 签发地址, http(s)://{ip}:{port}/context-path 或 http(s)://domain.com/context-path
+                .issuer("http://172.16.63.132:9000")
+                .build();
+    }
+
+    /**
+     * 自定义 JWT 信息
+     *
+     * @return {@link OAuth2TokenCustomizer<JwtEncodingContext>}
+     * @author Fable
+     * @since 2024/6/17 14:39
+     */
+    @Bean
+    public OAuth2TokenCustomizer<JwtEncodingContext> jwtCustomizer() {
+        return context -> {
+            // 检查登录用户信息是不是 UserDetails, 排除掉没有用户参与的流程
+            if (context.getPrincipal().getPrincipal() instanceof UserDetails userDetails) {
+                // 获取用户的权限
+                Collection<? extends GrantedAuthority> authorities = userDetails.getAuthorities();
+                // 提取权限并转为字符串
+                Set<String> authoritySet = Optional.ofNullable(authorities).orElse(Collections.emptySet()).stream()
+                        .map(GrantedAuthority::getAuthority).collect(Collectors.toSet());
+
+                // 获取申请的 scopes
+                Set<String> authorizedScopes = context.getAuthorizedScopes();
+                // 合并用户权限和 scopes
+                authoritySet.addAll(authorizedScopes);
+
+                // 将权限信息放入 Jwt 的 Claims 中
+                JwtClaimsSet.Builder claims = context.getClaims();
+                claims.claim("authorities", authoritySet);
+            }
+        };
     }
 }
